@@ -133,17 +133,36 @@ export default function Home() {
               }
 
               if (event.type === 'complete') {
-                // Fetch full result from non-streaming endpoint
-                const fullResponse = await fetch('/api/analyze', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ markdown }),
+                console.log('[UI] Stream complete, received data:', {
+                  nodes: event.partialNodes?.length,
+                  edges: event.partialEdges?.length,
+                  runbooks: event.partialRunbooks?.length,
                 });
-                const fullData = await fullResponse.json();
                 
-                if (fullData.success && fullData.flowchart) {
-                  setFlowchartData(fullData.flowchart);
-                  setAnalysisReasoning(fullData.reasoning);
+                // Use the data from the stream directly
+                if (event.partialNodes && event.partialEdges && event.partialRunbooks) {
+                  console.log('[UI] Using streamed data directly');
+                  setFlowchartData({
+                    nodes: event.partialNodes,
+                    edges: event.partialEdges,
+                    runbooks: event.partialRunbooks,
+                    metadata: {
+                      title: event.partialMetadata?.title || 'Runbook Analysis',
+                      description: event.partialMetadata?.description || 'Generated decision flowchart',
+                      originalMarkdown: markdown,
+                      generatedAt: new Date().toISOString(),
+                      version: '1.0',
+                    },
+                  });
+                  if (event.reasoning) {
+                    setAnalysisReasoning(event.reasoning);
+                  }
+                } else {
+                  console.error('[UI] Stream complete but missing data:', {
+                    hasNodes: !!event.partialNodes,
+                    hasEdges: !!event.partialEdges,
+                    hasRunbooks: !!event.partialRunbooks,
+                  });
                 }
               }
             } catch (parseError) {
@@ -475,7 +494,7 @@ export default function Home() {
         {/* Input View */}
         {!flowchartData && !isAnalyzing && (
           <div className="flex-1 flex items-center justify-center p-8">
-            <MarkdownInput onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} />
+            <MarkdownInput onAnalyze={handleAnalyze} onLoadProject={handleLoadProject} isAnalyzing={isAnalyzing} />
           </div>
         )}
 

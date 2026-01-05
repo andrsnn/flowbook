@@ -1,0 +1,6 @@
+# Flowbook Project Rules
+
+## Build Verification
+
+Always run `npm run build` after making changes to verify there are no TypeScript or build errors.
+

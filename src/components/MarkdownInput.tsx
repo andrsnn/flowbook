@@ -1,19 +1,22 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, Sparkles, AlertCircle, X } from 'lucide-react';
+import { Upload, FileText, Sparkles, AlertCircle, X, FolderOpen } from 'lucide-react';
+import { SavedProject, FlowchartData } from '@/types/schema';
 
 interface MarkdownInputProps {
   onAnalyze: (markdown: string) => void;
+  onLoadProject: (project: SavedProject) => void;
   isAnalyzing: boolean;
 }
 
-export default function MarkdownInput({ onAnalyze, isAnalyzing }: MarkdownInputProps) {
+export default function MarkdownInput({ onAnalyze, onLoadProject, isAnalyzing }: MarkdownInputProps) {
   const [markdown, setMarkdown] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const projectInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = useCallback((file: File) => {
     if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown') && !file.name.endsWith('.txt')) {
@@ -84,6 +87,42 @@ export default function MarkdownInput({ onAnalyze, isAnalyzing }: MarkdownInputP
     setMarkdown('');
     setError(null);
   };
+
+  const handleProjectLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const data = JSON.parse(content);
+        
+        // Check if it's a SavedProject or raw FlowchartData
+        if (data.version && data.flowchart) {
+          // It's a SavedProject
+          onLoadProject(data as SavedProject);
+        } else if (data.nodes && data.edges && data.runbooks) {
+          // It's raw FlowchartData
+          onLoadProject({
+            version: '1.0',
+            savedAt: new Date().toISOString(),
+            flowchart: data as FlowchartData,
+          });
+        } else {
+          throw new Error('Invalid project file format');
+        }
+      } catch (err) {
+        setError(`Failed to load project: ${err instanceof Error ? err.message : 'Invalid file'}`);
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset input
+    if (projectInputRef.current) {
+      projectInputRef.current.value = '';
+    }
+  }, [onLoadProject]);
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -188,17 +227,30 @@ Help users who have multiple accounts or need to free up an email address.
             onChange={handleFileInputChange}
             className="hidden"
           />
+          <input
+            ref={projectInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleProjectLoad}
+            className="hidden"
+          />
           <button
             onClick={() => fileInputRef.current?.click()}
             className="btn btn-secondary"
             disabled={isAnalyzing}
           >
             <Upload size={18} />
-            Upload File
+            Upload Runbook
           </button>
-          <span className="text-sm text-[var(--color-text-muted)]">
-            or drag & drop
-          </span>
+          <button
+            onClick={() => projectInputRef.current?.click()}
+            className="btn btn-ghost"
+            disabled={isAnalyzing}
+            title="Load a previously saved project"
+          >
+            <FolderOpen size={18} />
+            Load Project
+          </button>
         </div>
 
         <button

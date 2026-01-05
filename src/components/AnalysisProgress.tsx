@@ -17,10 +17,14 @@ const stages = [
 
 export default function AnalysisProgress({ events, currentPercent }: AnalysisProgressProps) {
   const latestEvent = events[events.length - 1];
+  const isComplete = latestEvent?.type === 'complete';
   const currentStage = latestEvent?.stage || 'parsing';
   
   // Determine stage status
   const getStageStatus = (stageId: string) => {
+    // If analysis is complete, all stages are complete
+    if (isComplete) return 'complete';
+    
     const stageIndex = stages.findIndex(s => s.id === stageId);
     const currentIndex = stages.findIndex(s => s.id === currentStage);
     

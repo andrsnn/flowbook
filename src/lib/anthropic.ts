@@ -348,10 +348,17 @@ ${OUTPUT_FORMAT}`
     
     yield {
       type: 'complete',
+      stage: 'generating',
       message: `Generated ${flowchartData.nodes.length} nodes and ${flowchartData.runbooks.length} runbooks`,
       percent: 100,
       partialNodes: flowchartData.nodes,
+      partialEdges: flowchartData.edges,
       partialRunbooks: flowchartData.runbooks,
+      partialMetadata: {
+        title: flowchartData.metadata.title,
+        description: flowchartData.metadata.description,
+      },
+      reasoning: parsed.reasoning,
     };
     
   } catch (error) {

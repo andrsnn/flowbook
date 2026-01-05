@@ -90,7 +90,13 @@ export interface AnalysisProgressEvent {
   percent?: number;
   // Partial data as it's generated
   partialNodes?: FlowNode[];
+  partialEdges?: FlowEdge[];
   partialRunbooks?: GeneratedRunbook[];
+  partialMetadata?: {
+    title: string;
+    description: string;
+  };
+  reasoning?: string;
 }
 
 // App state
