@@ -35,36 +35,140 @@ export async function generateFlowchartImage(
     // Build a detailed prompt describing the flowchart
     const flowchartDescription = buildFlowchartDescription(flowchart);
     
-    const prompt = `Create a clean, professional flowchart diagram visualization.
+    const prompt = `Generate a PREMIUM QUALITY technical infographic flowchart. This must be visually stunning and publication-ready.
 
-FLOWCHART STRUCTURE:
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ CRITICAL: TEXT ACCURACY REQUIREMENTS ⚠️
+═══════════════════════════════════════════════════════════════════════════════
+
+YOU MUST COPY THE TEXT EXACTLY AS PROVIDED. DO NOT PARAPHRASE, ABBREVIATE, OR MODIFY ANY TEXT.
+
+Each node label below must appear VERBATIM in the image. Spell every word correctly.
+If you cannot render text accurately, use simple short labels but NEVER show incorrect text.
+
+═══════════════════════════════════════════════════════════════════════════════
+FLOWCHART DATA (RENDER EXACTLY AS SPECIFIED)
+═══════════════════════════════════════════════════════════════════════════════
+
 ${flowchartDescription}
 
-MERMAID DIAGRAM REFERENCE:
+═══════════════════════════════════════════════════════════════════════════════
+STRUCTURAL REFERENCE (Mermaid Diagram)
+═══════════════════════════════════════════════════════════════════════════════
+
 ${mermaidDiagram}
 
-DESIGN REQUIREMENTS:
-- Clean, modern design with rounded rectangles for nodes
-- Use these colors:
-  - Purple (#8957e5) for START nodes
-  - Green (#238636) for QUESTION/decision nodes (diamond shape)
-  - Blue (#1f6feb) for RUNBOOK/action nodes (rectangles)
-  - Red (#f85149) for END nodes
-- White text on colored backgrounds
-- Clear arrows connecting nodes
-- Labels on arrows where specified (Yes/No, etc.)
-- Dark background (#0a0e14) to match a developer tool aesthetic
-- Professional, technical documentation style
-- Hierarchical top-to-bottom layout
-- All text should be clearly readable
+═══════════════════════════════════════════════════════════════════════════════
+VISUAL DESIGN SPECIFICATIONS (Premium Infographic Style)
+═══════════════════════════════════════════════════════════════════════════════
 
-Generate a high-quality, detailed flowchart diagram image.`;
+OVERALL AESTHETIC:
+- Style: Modern tech infographic / premium dashboard visualization
+- Quality: 4K resolution, crisp edges, anti-aliased
+- Background: Rich dark gradient from #0d1117 to #161b22 (GitHub dark theme inspired)
+- Add subtle grid pattern or dot matrix in background for depth
+- Include subtle ambient glow effects around important nodes
 
-    // Try the Pro model first (better quality)
+NODE DESIGN (Shape + Color + Typography):
+
+1. START NODES 🟣
+   - Shape: Pill/stadium shape with soft glow effect
+   - Color: Vibrant purple gradient (#8957e5 → #a371f7)
+   - Border: 2px lighter purple (#c297ff) with subtle outer glow
+   - Icon: Play button or rocket icon inside
+   - Text: Bold, white, centered
+
+2. QUESTION NODES ❓ (Decision Points)
+   - Shape: Diamond OR rounded rectangle with question mark accent
+   - Color: Rich green gradient (#238636 → #2ea043)
+   - Border: 2px bright green (#3fb950) with glow
+   - Icon: Question mark badge in corner
+   - Text: White, bold title + lighter description below
+   - Size: Larger than other nodes (these are key decision points)
+
+3. ANSWER NODES 💬 (Selected Choices)
+   - Shape: Compact rounded rectangle / tag shape
+   - Color: Slate gray gradient (#475569 → #64748b)
+   - Border: 1px subtle border (#94a3b8)
+   - Text: White, medium weight
+   - Size: Smaller than question nodes
+   - Style: Appears as "selected option" badge
+
+4. RUNBOOK/ACTION NODES 📋 (Procedures)
+   - Shape: Rectangle with rounded corners + document icon
+   - Color: Bright blue gradient (#1f6feb → #388bfd)
+   - Border: 2px sky blue (#58a6ff) with soft glow
+   - Icon: Clipboard or checklist icon
+   - Text: White, bold title
+   - Badge: Small "RUNBOOK" label in corner
+
+5. END NODES (Terminal States):
+   - Shape: Double-bordered rectangle or octagon
+   
+   ✅ RESOLVED:
+   - Color: Success green gradient (#22c55e → #4ade80)
+   - Icon: Checkmark
+   - Border: Bright green glow
+   
+   🔺 ESCALATE:
+   - Color: Alert red gradient (#f85149 → #ff7b72)
+   - Icon: Arrow up or warning triangle
+   - Border: Red glow effect
+   
+   📌 MANUAL:
+   - Color: Warning amber gradient (#eab308 → #fbbf24)
+   - Icon: Hand or tool icon
+   - Border: Amber glow
+   
+   🚫 BLOCKED:
+   - Color: Neutral gray (#6e7681 → #8b949e)
+   - Icon: X or stop icon
+
+CONNECTORS & ARROWS:
+- Style: Smooth bezier curves, not straight lines
+- Color: Gradient from source node color to target node color
+- Arrow heads: Modern triangular, filled
+- Line width: 3px with subtle glow/shadow
+- Animated feel: Add subtle directional indicators
+- Labels on arrows: Rounded pill background, contrasting text
+
+LAYOUT & COMPOSITION:
+- Arrangement: Top-to-bottom hierarchical tree
+- Spacing: Generous whitespace between nodes (min 40px)
+- Alignment: Perfect grid alignment, symmetrical where possible
+- Flow: Clear visual hierarchy from START to END states
+- Balance: Distribute nodes evenly, avoid clustering
+
+TYPOGRAPHY:
+- Font style: Clean sans-serif (like Inter, SF Pro, or Segoe UI)
+- Node titles: Bold, 14-16pt equivalent
+- Descriptions: Regular weight, 11-12pt, slightly transparent
+- Edge labels: Medium weight, 10-11pt, high contrast background
+- ALL TEXT MUST BE PERFECTLY LEGIBLE AND SPELLED CORRECTLY
+
+POLISH & EFFECTS:
+- Drop shadows: Subtle, 4px blur, 20% opacity black
+- Glassmorphism: Slight frosted glass effect on nodes
+- Depth: Nodes should appear to float above background
+- Icons: Use simple, recognizable glyphs (not detailed illustrations)
+- Consistency: All nodes same border radius, shadow intensity
+
+═══════════════════════════════════════════════════════════════════════════════
+FINAL OUTPUT REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+Generate a COMPLETE flowchart showing EVERY node and connection listed above.
+This should look like a premium infographic you'd see in a tech company's documentation.
+The image must be immediately understandable and visually impressive.
+
+REMEMBER: Text accuracy is paramount. Every label must be spelled correctly and match the data exactly.`;
+
+    // Try image generation models (Gemini's native image generation)
+    // gemini-3-pro-image-preview = "Nano Banana Pro" (higher fidelity, 4K capable) - default
+    // gemini-2.5-flash-image = "Nano Banana" (fast/efficient) - fallback
     const modelsToTry = [
       'gemini-3-pro-image-preview',
       'gemini-2.5-flash-image',
-      'gemini-2.0-flash-exp-image-generation',
     ];
     
     for (const modelName of modelsToTry) {
@@ -121,6 +225,7 @@ function buildFlowchartDescription(flowchart: FlowchartData): string {
     const typeEmoji = {
       start: '🟣',
       question: '🟢',
+      answer: '⚪',
       runbook: '🔵',
       end: '🔴',
     }[node.type];
@@ -157,7 +262,7 @@ export async function validateFlowchart(flowchart: FlowchartData): Promise<{
 }> {
   try {
     const client = getClient();
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = client.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const mermaidDiagram = generateMermaidDiagram(flowchart);
     

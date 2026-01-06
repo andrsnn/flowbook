@@ -22,7 +22,7 @@ import { FlowchartData, FlowNode } from '@/types/schema';
 interface FlowchartProps {
   data: FlowchartData;
   onNodeClick?: (node: FlowNode) => void;
-  onNodeAction?: (action: 'view' | 'regenerate' | 'delete', node: FlowNode) => void;
+  onNodeAction?: (action: 'view' | 'regenerate' | 'expand' | 'delete', node: FlowNode) => void;
   expandedNodes: Set<string>;
   onToggleExpand: (nodeId: string) => void;
   currentPath: string[];

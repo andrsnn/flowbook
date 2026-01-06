@@ -1,5 +1,5 @@
 // Flowchart node types
-export type NodeType = 'start' | 'question' | 'runbook' | 'end';
+export type NodeType = 'start' | 'question' | 'answer' | 'runbook' | 'end';
 export type EndStateType = 'resolved' | 'escalate' | 'manual' | 'blocked';
 
 export interface SourceReference {
@@ -127,7 +127,17 @@ export const DEFAULT_APP_STATE: AppState = {
 };
 
 // Export formats
-export type ExportFormat = 'png' | 'svg' | 'mermaid' | 'markdown' | 'json' | 'project';
+export type ExportFormat = 
+  | 'png' 
+  | 'svg' 
+  | 'mermaid' 
+  | 'markdown' 
+  | 'json' 
+  | 'project'
+  | 'confluence-storage'
+  | 'confluence-wiki'
+  | 'gdocs-html'
+  | 'gdocs-md';
 
 // Project save format
 export interface SavedProject {
@@ -139,4 +149,37 @@ export interface SavedProject {
     currentPath: string[];
     guidedMode: boolean;
   };
+}
+
+// Search types
+export type SearchDocumentType = 'node' | 'runbook' | 'markdown_section';
+
+export interface SearchDocument {
+  id: string;
+  type: SearchDocumentType;
+  nodeId?: string;        // For navigation to flowchart node
+  runbookId?: string;     // For navigation to runbook
+  title: string;
+  content: string;        // Full searchable text
+  snippet: string;        // Display excerpt
+  embedding?: number[];   // Vector representation (populated after indexing)
+}
+
+export interface SearchResult {
+  document: SearchDocument;
+  score: number;          // Similarity score (0-1)
+  highlights?: string[];  // Matched text highlights
+}
+
+export interface AISearchResponse {
+  answer: string;         // Markdown-formatted response
+  references: AIReference[];
+  query: string;
+}
+
+export interface AIReference {
+  type: 'node' | 'runbook' | 'source';
+  id: string;
+  title: string;
+  snippet: string;
 }

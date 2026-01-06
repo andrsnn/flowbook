@@ -6,10 +6,11 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
-    const { nodeId, flowchart, feedback } = await request.json() as {
+    const { nodeId, flowchart, feedback, mode } = await request.json() as {
       nodeId: string;
       flowchart: FlowchartData;
       feedback?: string;
+      mode?: 'regenerate' | 'expand';
     };
     
     if (!nodeId || !flowchart) {
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const result = await regenerateNode(nodeId, flowchart, feedback);
+    const result = await regenerateNode(nodeId, flowchart, feedback, mode || 'regenerate');
     
     if (result.error) {
       return NextResponse.json(

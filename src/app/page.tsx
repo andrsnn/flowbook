@@ -11,16 +11,19 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
-  RotateCcw,
   Maximize2,
   Minimize2,
   RefreshCw,
+  Search,
+  MessageCircleQuestion,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import MarkdownInput from '@/components/MarkdownInput';
 import RunbookViewer from '@/components/RunbookViewer';
 import ExportMenu from '@/components/ExportMenu';
 import AnalysisProgress from '@/components/AnalysisProgress';
+import SearchModal from '@/components/SearchModal';
+import { resetSearchIndex } from '@/lib/search';
 import { 
   FlowchartData, 
   FlowNode, 
@@ -62,8 +65,23 @@ export default function Home() {
   const [showRegenDialog, setShowRegenDialog] = useState(false);
   const [regenFeedback, setRegenFeedback] = useState('');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenMode, setRegenMode] = useState<'regenerate' | 'expand'>('regenerate');
+  const [showSearch, setShowSearch] = useState(false);
   
   const flowchartRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard shortcut for search (Ctrl/Cmd + F)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f' && flowchartData) {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [flowchartData]);
 
   // Initialize expanded nodes when flowchart changes
   useEffect(() => {
@@ -215,8 +233,8 @@ export default function Home() {
     }
   }, [flowchartData, guidedMode]);
 
-  // Node action handler (regenerate, delete)
-  const handleNodeAction = useCallback((action: 'view' | 'regenerate' | 'delete', node: FlowNode) => {
+  // Node action handler (regenerate, expand, delete)
+  const handleNodeAction = useCallback((action: 'view' | 'regenerate' | 'expand' | 'delete', node: FlowNode) => {
     if (action === 'view' && node.type === 'runbook' && node.runbookId && flowchartData) {
       const runbook = flowchartData.runbooks.find(r => r.id === node.runbookId);
       if (runbook) {
@@ -224,6 +242,13 @@ export default function Home() {
       }
     } else if (action === 'regenerate') {
       setSelectedNode(node);
+      setRegenMode('regenerate');
+      setRegenFeedback('');
+      setShowRegenDialog(true);
+    } else if (action === 'expand') {
+      setSelectedNode(node);
+      setRegenMode('expand');
+      setRegenFeedback('');
       setShowRegenDialog(true);
     } else if (action === 'delete') {
       if (confirm(`Delete node "${node.label}"? This cannot be undone.`)) {
@@ -239,7 +264,7 @@ export default function Home() {
     }
   }, [flowchartData]);
 
-  // Regenerate node
+  // Regenerate or expand node
   const handleRegenerate = async () => {
     if (!selectedNode || !flowchartData) return;
     
@@ -252,6 +277,7 @@ export default function Home() {
           nodeId: selectedNode.id,
           flowchart: flowchartData,
           feedback: regenFeedback,
+          mode: regenMode,
         }),
       });
       
@@ -313,6 +339,41 @@ export default function Home() {
       const runbook = flowchartData.runbooks.find(r => r.id === runbookId);
       if (runbook) {
         setSelectedRunbook(runbook);
+        setShowRunbookList(false);
+      }
+    }
+  }, [flowchartData]);
+
+  // Navigate to node (from search results)
+  const handleNavigateToNode = useCallback((nodeId: string) => {
+    if (flowchartData) {
+      const node = flowchartData.nodes.find(n => n.id === nodeId);
+      if (node) {
+        // Expand the node and its path
+        setExpandedNodes(prev => {
+          const next = new Set(prev);
+          next.add(nodeId);
+          return next;
+        });
+        
+        // Add to current path
+        setCurrentPath(prev => {
+          if (!prev.includes(nodeId)) {
+            return [...prev, nodeId];
+          }
+          return prev;
+        });
+        
+        // Select the node
+        setSelectedNode(node);
+        
+        // If it's a runbook node, open the runbook
+        if (node.type === 'runbook' && node.runbookId) {
+          const runbook = flowchartData.runbooks.find(r => r.id === node.runbookId);
+          if (runbook) {
+            setSelectedRunbook(runbook);
+          }
+        }
       }
     }
   }, [flowchartData]);
@@ -336,6 +397,54 @@ export default function Home() {
     }
   }, [inputMarkdown, handleAnalyze]);
 
+  // Rephrase category nodes as questions
+  const handleRephraseAsQuestions = useCallback(() => {
+    if (!flowchartData) return;
+    
+    const rephrasedNodes = flowchartData.nodes.map(node => {
+      // Only rephrase question and answer nodes that don't already end with ?
+      if ((node.type !== 'question' && node.type !== 'answer') || node.label.endsWith('?')) {
+        return node;
+      }
+      
+      let label = node.label;
+      
+      // Remove common suffixes
+      const cleanLabel = label
+        .replace(/\s+Issues?$/i, '')
+        .replace(/\s+Request$/i, '')
+        .replace(/\s+Problem$/i, '')
+        .replace(/\s+Confusion$/i, '');
+      
+      const lowerLabel = cleanLabel.toLowerCase();
+      
+      // Already has question words
+      if (lowerLabel.includes('what') || lowerLabel.includes('which') || lowerLabel.includes('how') ||
+          lowerLabel.startsWith('is ') || lowerLabel.startsWith('does ') || lowerLabel.startsWith('has ') || lowerLabel.startsWith('can ')) {
+        label = `${label}?`;
+      } else {
+        // Convert to question format
+        const article = /^[aeiou]/i.test(cleanLabel) ? 'an' : 'a';
+        if (/^[A-Z]/.test(cleanLabel) && !cleanLabel.includes(' ')) {
+          label = `Is this ${article} ${cleanLabel} issue?`;
+        } else {
+          label = `Is this ${article} ${cleanLabel.toLowerCase()} issue?`;
+        }
+      }
+      
+      return {
+        ...node,
+        label,
+        question: node.question === node.label ? label : node.question,
+      };
+    });
+    
+    setFlowchartData({
+      ...flowchartData,
+      nodes: rephrasedNodes,
+    });
+  }, [flowchartData]);
+
   // Reset
   const handleReset = () => {
     setFlowchartData(null);
@@ -347,52 +456,52 @@ export default function Home() {
     setExpandedNodes(new Set());
     setCurrentPath([]);
     setError(null);
+    setShowSearch(false);
+    resetSearchIndex();
   };
 
   const dismissError = () => setError(null);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)]/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-3">
+        <div className="px-3 sm:px-4">
+          <div className="flex items-center justify-between h-14 gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={handleReset}
-                className="p-2 rounded-lg bg-gradient-to-br from-[var(--color-accent-primary)] to-[var(--color-accent-secondary)] hover:opacity-90 transition-opacity"
+                className="p-1.5 rounded-lg bg-gradient-to-br from-[var(--color-accent-primary)] to-[var(--color-accent-secondary)] hover:opacity-90 transition-opacity"
               >
-                <GitBranch size={20} className="text-white" />
+                <GitBranch size={18} className="text-white" />
               </button>
-              <div>
+              <div className="hidden md:block">
                 <h1 className="font-mono font-semibold text-sm">Runbook Flow</h1>
-                <p className="text-xs text-[var(--color-text-muted)]">Decision Flowchart Generator</p>
               </div>
             </div>
 
             {flowchartData && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 flex-wrap justify-end">
                 {/* Guided Mode Toggle */}
                 <button
                   onClick={() => setGuidedMode(!guidedMode)}
-                  className={`btn btn-ghost ${guidedMode ? 'bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)]' : ''}`}
-                  title={guidedMode ? 'Guided mode (click through questions)' : 'Full view mode'}
+                  className={`p-2 rounded-lg transition-colors ${guidedMode ? 'bg-[var(--color-accent-primary)]/10 text-[var(--color-accent-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)]'}`}
+                  title={guidedMode ? 'Guided mode' : 'Full view mode'}
                 >
                   {guidedMode ? <Eye size={18} /> : <EyeOff size={18} />}
-                  {guidedMode ? 'Guided' : 'Full View'}
                 </button>
 
                 {/* Expand/Collapse */}
                 <button
                   onClick={handleExpandAll}
-                  className="btn btn-ghost"
+                  className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
                   title="Expand all"
                 >
                   <Maximize2 size={18} />
                 </button>
                 <button
                   onClick={handleCollapseAll}
-                  className="btn btn-ghost"
+                  className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
                   title="Collapse all"
                 >
                   <Minimize2 size={18} />
@@ -401,17 +510,35 @@ export default function Home() {
                 {/* Runbook List */}
                 <button
                   onClick={() => setShowRunbookList(!showRunbookList)}
-                  className={`btn btn-ghost ${showRunbookList ? 'bg-[var(--color-bg-tertiary)]' : ''}`}
+                  className={`p-2 rounded-lg transition-colors ${showRunbookList ? 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)]'}`}
+                  title={`Runbooks (${flowchartData.runbooks.length})`}
                 >
                   <List size={18} />
-                  Runbooks ({flowchartData.runbooks.length})
+                </button>
+
+                {/* Search */}
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
+                  title="Search (⌘/Ctrl + F)"
+                >
+                  <Search size={18} />
+                </button>
+
+                {/* Rephrase as Questions */}
+                <button
+                  onClick={handleRephraseAsQuestions}
+                  className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
+                  title="Rephrase nodes as questions"
+                >
+                  <MessageCircleQuestion size={18} />
                 </button>
 
                 {/* Re-analyze */}
                 <button
                   onClick={handleReanalyze}
-                  className="btn btn-ghost"
-                  title="Re-analyze with original markdown"
+                  className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
+                  title="Re-analyze"
                 >
                   <RefreshCw size={18} />
                 </button>
@@ -426,9 +553,13 @@ export default function Home() {
                   onLoadProject={handleLoadProject}
                 />
                 
-                <button onClick={handleReset} className="btn btn-ghost">
+                {/* New */}
+                <button 
+                  onClick={handleReset} 
+                  className="p-2 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
+                  title="New flowchart"
+                >
                   <ArrowLeft size={18} />
-                  New
                 </button>
               </div>
             )}
@@ -449,18 +580,33 @@ export default function Home() {
         </div>
       )}
 
-      {/* Regenerate Dialog */}
+      {/* Regenerate/Expand Dialog */}
       {showRegenDialog && selectedNode && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-2">Regenerate Node</h3>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-              Regenerating: <strong>{selectedNode.label}</strong>
+            <h3 className="text-lg font-semibold mb-2">
+              {regenMode === 'expand' ? '✨ Expand Node Details' : '🔄 Regenerate Node'}
+            </h3>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-2">
+              {regenMode === 'expand' ? 'Expanding' : 'Regenerating'}: <strong>{selectedNode.label}</strong>
+              <span className="text-xs ml-2 px-2 py-0.5 bg-[var(--color-bg-tertiary)] rounded">{selectedNode.type}</span>
             </p>
+            {regenMode === 'expand' && (
+              <p className="text-xs text-blue-400 mb-4">
+                This will generate longer, more detailed text for the label, description, 
+                {selectedNode.type === 'question' && ' question text,'}
+                {selectedNode.type === 'runbook' && ' and runbook steps with specific instructions.'}
+                {selectedNode.type === 'answer' && ' explaining what this choice means.'}
+                {selectedNode.type === 'end' && ' including resolution details and next steps.'}
+              </p>
+            )}
             <textarea
               value={regenFeedback}
               onChange={(e) => setRegenFeedback(e.target.value)}
-              placeholder="Optional: Add feedback to guide the regeneration (e.g., 'Make the question clearer' or 'Focus on authentication issues')"
+              placeholder={regenMode === 'expand' 
+                ? "Optional: Specific details you want included (e.g., 'Include specific tool names' or 'Add warning about common mistakes')"
+                : "Optional: Feedback to guide regeneration (e.g., 'Make clearer' or 'Focus on authentication')"
+              }
               className="input h-24 resize-none mb-4"
             />
             <div className="flex justify-end gap-2">
@@ -473,15 +619,15 @@ export default function Home() {
               <button
                 onClick={handleRegenerate}
                 disabled={isRegenerating}
-                className="btn btn-primary"
+                className={regenMode === 'expand' ? 'btn bg-blue-600 hover:bg-blue-700 text-white' : 'btn btn-primary'}
               >
                 {isRegenerating ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Regenerating...
+                    {regenMode === 'expand' ? 'Expanding...' : 'Regenerating...'}
                   </>
                 ) : (
-                  'Regenerate'
+                  regenMode === 'expand' ? '✨ Expand Details' : '🔄 Regenerate'
                 )}
               </button>
             </div>
@@ -511,26 +657,16 @@ export default function Home() {
             {/* Flowchart Panel */}
             <div className="flex-1 flex flex-col">
               {/* Flowchart Header */}
-              <div className="p-4 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-semibold text-lg">{flowchartData.metadata.title}</h2>
-                    <p className="text-sm text-[var(--color-text-secondary)]">
+              <div className="p-4 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-secondary)] overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="min-w-0">
+                    <h2 className="font-semibold text-lg truncate">{flowchartData.metadata.title}</h2>
+                    <p className="text-sm text-[var(--color-text-secondary)] truncate">
                       {flowchartData.metadata.description}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)]">
-                    <span>{flowchartData.nodes.length} nodes</span>
-                    <span>•</span>
-                    <span>{flowchartData.runbooks.length} runbooks</span>
-                    {guidedMode && (
-                      <>
-                        <span>•</span>
-                        <span className="text-[var(--color-accent-primary)]">
-                          {currentPath.length} steps in path
-                        </span>
-                      </>
-                    )}
+                  <div className="text-sm text-[var(--color-text-muted)]">
+                    {flowchartData.nodes.length} nodes • {flowchartData.runbooks.length} runbooks
                   </div>
                 </div>
                 
@@ -635,6 +771,17 @@ export default function Home() {
             Powered by Claude AI for analysis • Gemini for visualization
           </div>
         </footer>
+      )}
+
+      {/* Search Modal */}
+      {flowchartData && (
+        <SearchModal
+          isOpen={showSearch}
+          onClose={() => setShowSearch(false)}
+          flowchartData={flowchartData}
+          onNavigateToNode={handleNavigateToNode}
+          onNavigateToRunbook={handleNavigateToRunbook}
+        />
       )}
     </div>
   );

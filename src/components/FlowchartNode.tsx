@@ -22,7 +22,7 @@ import { FlowNode, EndStateType } from '@/types/schema';
 
 interface CustomNodeData extends FlowNode {
   onNodeClick?: (node: FlowNode) => void;
-  onNodeAction?: (action: 'view' | 'regenerate' | 'delete', node: FlowNode) => void;
+  onNodeAction?: (action: 'view' | 'regenerate' | 'expand' | 'delete', node: FlowNode) => void;
   isOnPath?: boolean;
   isExpanded?: boolean;
   hasHiddenChildren?: boolean;
@@ -32,7 +32,7 @@ interface CustomNodeData extends FlowNode {
 // Node action menu
 const NodeMenu = memo(({ node, onAction }: { 
   node: FlowNode; 
-  onAction: (action: 'view' | 'regenerate' | 'delete') => void 
+  onAction: (action: 'view' | 'regenerate' | 'expand' | 'delete') => void 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -45,7 +45,7 @@ const NodeMenu = memo(({ node, onAction }: {
         <MoreVertical size={14} className="text-white" />
       </button>
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 bg-[#1a1f2a] border border-[#30363d] rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+        <div className="absolute right-0 top-full mt-1 bg-[#1a1f2a] border border-[#30363d] rounded-lg shadow-lg overflow-hidden min-w-[160px]">
           {node.type === 'runbook' && (
             <button
               onClick={(e) => { e.stopPropagation(); onAction('view'); setIsOpen(false); }}
@@ -54,6 +54,12 @@ const NodeMenu = memo(({ node, onAction }: {
               <Eye size={14} /> View Runbook
             </button>
           )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onAction('expand'); setIsOpen(false); }}
+            className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[#232a38] text-blue-400"
+          >
+            <FileText size={14} /> Expand Details
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); onAction('regenerate'); setIsOpen(false); }}
             className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[#232a38]"
@@ -222,6 +228,46 @@ export const QuestionNode = memo(({ data }: NodeProps<CustomNodeData>) => {
 });
 QuestionNode.displayName = 'QuestionNode';
 
+// Answer Node - Shows the selected answer/path choice
+export const AnswerNode = memo(({ data }: NodeProps<CustomNodeData>) => {
+  const isOnPath = data.isOnPath;
+  
+  return (
+    <div 
+      className={`group relative cursor-pointer`}
+      onClick={() => data.onNodeClick?.(data)}
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!bg-slate-400 !border-slate-200 !w-3 !h-3"
+      />
+      {data.onNodeAction && <NodeMenu node={data} onAction={(a) => data.onNodeAction!(a, data)} />}
+      <div className={`px-4 py-2 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border-2 shadow-md transition-all min-w-[140px] max-w-[240px] ${
+        isOnPath ? 'border-slate-300 shadow-slate-500/40 scale-105' : 'border-slate-500 shadow-slate-500/20 group-hover:shadow-slate-500/40'
+      }`}>
+        <div className="text-center">
+          <div className="font-medium text-white text-sm">{data.label}</div>
+          {data.description && (
+            <div className="text-slate-300 text-xs mt-1">{data.description}</div>
+          )}
+        </div>
+      </div>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!bg-slate-400 !border-slate-200 !w-3 !h-3"
+      />
+      <ExpandButton 
+        isExpanded={data.isExpanded ?? true} 
+        hasChildren={data.hasHiddenChildren ?? false}
+        onClick={() => data.onToggleExpand?.(data.id)}
+      />
+    </div>
+  );
+});
+AnswerNode.displayName = 'AnswerNode';
+
 // Runbook Node
 export const RunbookNode = memo(({ data }: NodeProps<CustomNodeData>) => {
   const isOnPath = data.isOnPath;
@@ -350,6 +396,7 @@ EndNode.displayName = 'EndNode';
 export const nodeTypes = {
   start: StartNode,
   question: QuestionNode,
+  answer: AnswerNode,
   runbook: RunbookNode,
   end: EndNode,
 };

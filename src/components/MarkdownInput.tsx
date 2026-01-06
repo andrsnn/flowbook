@@ -4,6 +4,12 @@ import { useState, useRef, useCallback } from 'react';
 import { Upload, FileText, Sparkles, AlertCircle, X, FolderOpen } from 'lucide-react';
 import { SavedProject, FlowchartData } from '@/types/schema';
 
+interface UploadedFile {
+  name: string;
+  content: string;
+  size: number;
+}
+
 interface MarkdownInputProps {
   onAnalyze: (markdown: string) => void;
   onLoadProject: (project: SavedProject) => void;
@@ -12,45 +18,95 @@ interface MarkdownInputProps {
 
 export default function MarkdownInput({ onAnalyze, onLoadProject, isAnalyzing }: MarkdownInputProps) {
   const [markdown, setMarkdown] = useState('');
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = useCallback((file: File) => {
-    if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown') && !file.name.endsWith('.txt')) {
-      setError('Please upload a Markdown (.md) or text (.txt) file');
-      return;
+  const readFileAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  };
+
+  const handleFilesUpload = useCallback(async (files: FileList) => {
+    const errors: string[] = [];
+    const newFiles: UploadedFile[] = [];
+    const seenNames = new Set<string>();
+    
+    for (const file of Array.from(files)) {
+      // Validate file type
+      if (!file.name.endsWith('.md') && !file.name.endsWith('.markdown') && !file.name.endsWith('.txt')) {
+        errors.push(`${file.name}: Must be .md or .txt file`);
+        continue;
+      }
+
+      // Validate file size
+      if (file.size > 500000) {
+        errors.push(`${file.name}: Exceeds 500KB limit`);
+        continue;
+      }
+
+      // Skip duplicates within this batch
+      if (seenNames.has(file.name)) {
+        continue;
+      }
+      seenNames.add(file.name);
+
+      try {
+        const content = await readFileAsText(file);
+        newFiles.push({
+          name: file.name,
+          content,
+          size: file.size,
+        });
+      } catch {
+        errors.push(`${file.name}: Failed to read`);
+      }
     }
 
-    if (file.size > 500000) { // 500KB limit
-      setError('File is too large. Maximum size is 500KB');
-      return;
+    // Update state - filter out any files that already exist
+    if (newFiles.length > 0) {
+      setUploadedFiles(prev => {
+        const existingNames = new Set(prev.map(f => f.name));
+        const uniqueNewFiles = newFiles.filter(f => !existingNames.has(f.name));
+        if (uniqueNewFiles.length < newFiles.length) {
+          const skipped = newFiles.length - uniqueNewFiles.length;
+          errors.push(`${skipped} file(s) already uploaded`);
+        }
+        return [...prev, ...uniqueNewFiles];
+      });
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setMarkdown(content);
-      setFileName(file.name);
+    if (errors.length > 0) {
+      setError(errors.join('; '));
+    } else {
       setError(null);
-    };
-    reader.onerror = () => {
-      setError('Failed to read file');
-    };
-    reader.readAsText(file);
+    }
+  }, []);
+
+  const removeFile = useCallback((index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const clearAllFiles = useCallback(() => {
+    setUploadedFiles([]);
+    setError(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
 
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      handleFileUpload(file);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFilesUpload(files);
     }
-  }, [handleFileUpload]);
+  }, [handleFilesUpload]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -63,29 +119,37 @@ export default function MarkdownInput({ onAnalyze, onLoadProject, isAnalyzing }:
   }, []);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileUpload(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFilesUpload(files);
     }
     // Reset input so same file can be re-selected
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [handleFileUpload]);
+  }, [handleFilesUpload]);
 
   const handleSubmit = () => {
-    if (!markdown.trim()) {
+    const hasContent = markdown.trim() || uploadedFiles.length > 0;
+    if (!hasContent) {
       setError('Please enter or upload a runbook');
       return;
     }
     setError(null);
-    onAnalyze(markdown);
-  };
-
-  const clearFile = () => {
-    setFileName(null);
-    setMarkdown('');
-    setError(null);
+    
+    // Combine textarea content + all uploaded files with separators
+    const parts: string[] = [];
+    
+    if (markdown.trim()) {
+      parts.push(markdown.trim());
+    }
+    
+    for (const file of uploadedFiles) {
+      parts.push(`\n\n---\n# Source: ${file.name}\n---\n\n${file.content}`);
+    }
+    
+    const combined = parts.join('');
+    onAnalyze(combined);
   };
 
   const handleProjectLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,7 +197,7 @@ export default function MarkdownInput({ onAnalyze, onLoadProject, isAnalyzing }:
         </h1>
         <p className="text-[var(--color-text-secondary)] text-lg max-w-2xl mx-auto">
           Transform complex runbooks into interactive decision flowcharts. 
-          Paste your markdown or upload a file to get started.
+          Paste your markdown or upload files to get started.
         </p>
       </div>
 
@@ -162,17 +226,40 @@ export default function MarkdownInput({ onAnalyze, onLoadProject, isAnalyzing }:
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
       >
-        {/* File name badge */}
-        {fileName && (
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border)]">
-            <FileText size={14} className="text-[var(--color-accent-primary)]" />
-            <span className="text-sm text-[var(--color-text-primary)]">{fileName}</span>
-            <button
-              onClick={clearFile}
-              className="p-0.5 hover:bg-[var(--color-bg-tertiary)] rounded"
-            >
-              <X size={14} className="text-[var(--color-text-muted)]" />
-            </button>
+        {/* Uploaded files list */}
+        {uploadedFiles.length > 0 && (
+          <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-2 overflow-x-auto pb-1">
+            {uploadedFiles.map((file, index) => (
+              <div
+                key={`${file.name}-${index}`}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border)] flex-shrink-0"
+              >
+                <FileText size={14} className="text-[var(--color-accent-primary)]" />
+                <span className="text-sm text-[var(--color-text-primary)] max-w-[150px] truncate">
+                  {file.name}
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {(file.size / 1024).toFixed(1)}KB
+                </span>
+                <button
+                  onClick={() => removeFile(index)}
+                  className="p-0.5 hover:bg-[var(--color-bg-tertiary)] rounded"
+                  title="Remove file"
+                >
+                  <X size={14} className="text-[var(--color-text-muted)]" />
+                </button>
+              </div>
+            ))}
+            {uploadedFiles.length > 1 && (
+              <button
+                onClick={clearAllFiles}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 rounded-lg flex-shrink-0 transition-colors"
+                title="Clear all files"
+              >
+                <X size={12} />
+                Clear all
+              </button>
+            )}
           </div>
         )}
 
@@ -181,28 +268,29 @@ export default function MarkdownInput({ onAnalyze, onLoadProject, isAnalyzing }:
           value={markdown}
           onChange={(e) => {
             setMarkdown(e.target.value);
-            setFileName(null);
             setError(null);
           }}
           placeholder="Paste your runbook markdown here...
 
-# Example Runbook: Duplicate Account Resolution
+# Example Runbook: Account Issue Resolution
 
 ## Purpose
-Help users who have multiple accounts or need to free up an email address.
+Help users who have account access issues or need email changes.
 
-## Step 1: Find the Accounts
-- Search by email or First Name + Last Name + DOB
-- Note the User IDs for all matches
+## Step 1: Identify the Account
+- Search by email or username
+- Note the account ID and status
 
 ## Step 2: Identify the Situation
 | Situation | Action |
 |-----------|--------|
-| Provider wants patient email | Go to Scenario A |
-| Provider created patient account by mistake | Go to Scenario B |
+| User needs email changed | Go to Scenario A |
+| User has duplicate accounts | Go to Scenario B |
 
 ..."
-          className="w-full h-80 p-4 pt-14 bg-transparent text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none focus:outline-none font-mono text-sm"
+          className={`w-full h-80 p-4 bg-transparent text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none focus:outline-none font-mono text-sm ${
+            uploadedFiles.length > 0 ? 'pt-14' : 'pt-4'
+          }`}
           disabled={isAnalyzing}
         />
 
@@ -211,7 +299,7 @@ Help users who have multiple accounts or need to free up an email address.
           <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-bg-primary)]/80 rounded-xl">
             <div className="text-center">
               <Upload size={48} className="mx-auto mb-2 text-[var(--color-accent-primary)]" />
-              <p className="text-[var(--color-text-primary)] font-medium">Drop your file here</p>
+              <p className="text-[var(--color-text-primary)] font-medium">Drop your files here</p>
             </div>
           </div>
         )}
@@ -224,6 +312,7 @@ Help users who have multiple accounts or need to free up an email address.
             ref={fileInputRef}
             type="file"
             accept=".md,.markdown,.txt"
+            multiple
             onChange={handleFileInputChange}
             className="hidden"
           />
@@ -240,7 +329,7 @@ Help users who have multiple accounts or need to free up an email address.
             disabled={isAnalyzing}
           >
             <Upload size={18} />
-            Upload Runbook
+            Upload Files
           </button>
           <button
             onClick={() => projectInputRef.current?.click()}
@@ -255,7 +344,7 @@ Help users who have multiple accounts or need to free up an email address.
 
         <button
           onClick={handleSubmit}
-          disabled={!markdown.trim() || isAnalyzing}
+          disabled={(!markdown.trim() && uploadedFiles.length === 0) || isAnalyzing}
           className="btn btn-primary"
         >
           {isAnalyzing ? (
