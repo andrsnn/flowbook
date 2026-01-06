@@ -1390,156 +1390,532 @@ ${runbook.description}
 
 /**
  * Generate Google Docs compatible DOCX file
- * This format can be directly uploaded to Google Drive and opened with Google Docs
+ * This format produces a professional two-part guide with:
+ * - Part 1: Diagnostic Decision Tree with internal links
+ * - Part 2: Named Resolution Runbooks (A, B, C...)
  */
 export async function generateGoogleDocsDocx(flowchart: FlowchartData): Promise<Blob> {
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType } = await import('docx');
+  const { 
+    Document, 
+    Packer, 
+    Paragraph, 
+    TextRun, 
+    HeadingLevel, 
+    Table, 
+    TableRow, 
+    TableCell, 
+    WidthType, 
+    Bookmark,
+    InternalHyperlink,
+    AlignmentType,
+    convertInchesToTwip,
+  } = await import('docx');
   
   const mermaidCode = generateMermaidDiagram(flowchart);
   
-  // Helper to create a styled paragraph
-  const createParagraph = (text: string, options: { bold?: boolean; italic?: boolean; size?: number; color?: string } = {}) => {
+  // Generate letter names for runbooks (A, B, C, ..., Z, AA, AB, ...)
+  const getRunbookLetter = (index: number): string => {
+    let result = '';
+    let n = index;
+    while (n >= 0) {
+      result = String.fromCharCode(65 + (n % 26)) + result;
+      n = Math.floor(n / 26) - 1;
+    }
+    return result;
+  };
+  
+  // Create a map of runbook IDs to their letter names and bookmark IDs
+  const runbookMap = new Map<string, { letter: string; bookmarkId: string; title: string }>();
+  flowchart.runbooks.forEach((runbook, index) => {
+    const letter = getRunbookLetter(index);
+    runbookMap.set(runbook.id, {
+      letter,
+      bookmarkId: `runbook-${letter.toLowerCase()}`,
+      title: runbook.title,
+    });
+  });
+  
+  // Build adjacency list for graph traversal
+  const childEdges = new Map<string, Array<{ target: string; label: string }>>();
+  for (const edge of flowchart.edges) {
+    if (!childEdges.has(edge.source)) {
+      childEdges.set(edge.source, []);
+    }
+    childEdges.get(edge.source)!.push({ target: edge.target, label: edge.label || '' });
+  }
+  
+  // Find start node
+  const startNode = flowchart.nodes.find(n => n.type === 'start');
+  
+  // Build decision tree structure by traversing the graph
+  interface DecisionBranch {
+    node: typeof flowchart.nodes[0];
+    children: Array<{
+      answer: string;
+      targetNode: typeof flowchart.nodes[0] | undefined;
+      runbookInfo?: { letter: string; bookmarkId: string; title: string };
+    }>;
+  }
+  
+  // Collect questions in order (BFS from start)
+  const orderedQuestions: DecisionBranch[] = [];
+  const visitedNodes = new Set<string>();
+  const queue: string[] = startNode ? [startNode.id] : [];
+  
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!;
+    if (visitedNodes.has(nodeId)) continue;
+    visitedNodes.add(nodeId);
+    
+    const node = flowchart.nodes.find(n => n.id === nodeId);
+    if (!node) continue;
+    
+    // Process question nodes
+    if (node.type === 'question') {
+      const branch: DecisionBranch = { node, children: [] };
+      const edges = childEdges.get(nodeId) || [];
+      
+      for (const edge of edges) {
+        const targetNode = flowchart.nodes.find(n => n.id === edge.target);
+        
+        // Check if this leads to a runbook
+        let runbookInfo: { letter: string; bookmarkId: string; title: string } | undefined;
+        if (targetNode?.type === 'runbook' && targetNode.runbookId) {
+          runbookInfo = runbookMap.get(targetNode.runbookId);
+        } else if (targetNode?.type === 'answer') {
+          // Check if the answer leads to a runbook
+          const answerEdges = childEdges.get(targetNode.id) || [];
+          for (const answerEdge of answerEdges) {
+            const nextNode = flowchart.nodes.find(n => n.id === answerEdge.target);
+            if (nextNode?.type === 'runbook' && nextNode.runbookId) {
+              runbookInfo = runbookMap.get(nextNode.runbookId);
+            }
+          }
+        }
+        
+        branch.children.push({
+          answer: edge.label || targetNode?.label || '',
+          targetNode,
+          runbookInfo,
+        });
+        
+        if (targetNode) {
+          queue.push(targetNode.id);
+        }
+      }
+      
+      orderedQuestions.push(branch);
+    } else {
+      // Continue traversal for non-question nodes
+      const edges = childEdges.get(nodeId) || [];
+      for (const edge of edges) {
+        queue.push(edge.target);
+      }
+    }
+  }
+  
+  // Group questions by their categorical context (first question splits)
+  const categorizedQuestions = new Map<string, DecisionBranch[]>();
+  let currentCategory = 'General';
+  
+  for (const branch of orderedQuestions) {
+    // Detect category-defining questions
+    const labelLower = branch.node.label.toLowerCase();
+    if (labelLower.includes('type') || labelLower.includes('who') || labelLower.includes('user')) {
+      // This is likely a categorical split - use children as categories
+      for (const child of branch.children) {
+        if (child.answer) {
+          currentCategory = child.answer;
+          if (!categorizedQuestions.has(currentCategory)) {
+            categorizedQuestions.set(currentCategory, []);
+          }
+        }
+      }
+    }
+    
+    if (!categorizedQuestions.has(currentCategory)) {
+      categorizedQuestions.set(currentCategory, []);
+    }
+    categorizedQuestions.get(currentCategory)!.push(branch);
+  }
+  
+  // Default font for the document
+  const FONT = 'Calibri';
+  const FONT_SIZE_BODY = 24; // 12pt
+  const FONT_SIZE_SMALL = 20; // 10pt
+  
+  type DocElement = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
+  
+  // Helper to create styled paragraphs with Calibri font
+  const createParagraph = (text: string, options: { 
+    bold?: boolean; 
+    italic?: boolean; 
+    size?: number; 
+    color?: string;
+    spacing?: { before?: number; after?: number };
+  } = {}): InstanceType<typeof Paragraph> => {
     return new Paragraph({
       children: [
         new TextRun({
           text,
+          font: FONT,
           bold: options.bold,
           italics: options.italic,
-          size: options.size || 24, // 12pt
+          size: options.size || FONT_SIZE_BODY,
           color: options.color,
         }),
       ],
+      spacing: options.spacing,
     });
   };
   
-  type DocElement = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
+  // Helper to create bullet point with optional internal link
+  const createBulletWithLink = (
+    prefix: string, 
+    linkText: string, 
+    bookmarkId: string,
+    suffix?: string
+  ): InstanceType<typeof Paragraph> => {
+    const children: (InstanceType<typeof TextRun> | InstanceType<typeof InternalHyperlink>)[] = [
+      new TextRun({ text: `• ${prefix}`, font: FONT, size: FONT_SIZE_BODY }),
+    ];
+    
+    children.push(
+      new InternalHyperlink({
+        anchor: bookmarkId,
+        children: [
+          new TextRun({
+            text: linkText,
+            font: FONT,
+            size: FONT_SIZE_BODY,
+            color: '1155CC',
+            underline: { type: 'single' as const },
+          }),
+        ],
+      })
+    );
+    
+    if (suffix) {
+      children.push(new TextRun({ text: suffix, font: FONT, size: FONT_SIZE_BODY }));
+    }
+    
+    return new Paragraph({ 
+      children,
+      indent: { left: convertInchesToTwip(0.25) },
+    });
+  };
+  
+  // Helper to create a simple bullet point
+  const createBullet = (text: string, indent: number = 0.25): InstanceType<typeof Paragraph> => {
+    return new Paragraph({
+      children: [
+        new TextRun({ text: `• ${text}`, font: FONT, size: FONT_SIZE_BODY }),
+      ],
+      indent: { left: convertInchesToTwip(indent) },
+    });
+  };
+  
+  // Helper to create sub-bullet with circle marker
+  const createSubBullet = (text: string): InstanceType<typeof Paragraph> => {
+    return new Paragraph({
+      children: [
+        new TextRun({ text: `○ ${text}`, font: FONT, size: FONT_SIZE_BODY }),
+      ],
+      indent: { left: convertInchesToTwip(0.5) },
+    });
+  };
   
   // Build document sections
-  const children: DocElement[] = [
-    // Title
-    new Paragraph({
-      text: flowchart.metadata.title,
-      heading: HeadingLevel.TITLE,
-    }),
-  ];
+  const children: DocElement[] = [];
+  
+  // ============================================
+  // TITLE SECTION
+  // ============================================
+  children.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: flowchart.metadata.title,
+        font: FONT,
+        bold: true,
+        size: 56, // 28pt
+      }),
+    ],
+    spacing: { after: 200 },
+  }));
   
   // Description
   children.push(createParagraph(flowchart.metadata.description));
   children.push(createParagraph(
     `Generated: ${new Date(flowchart.metadata.generatedAt).toLocaleString()} • ${flowchart.nodes.length} nodes • ${flowchart.runbooks.length} runbooks`,
-    { italic: true, color: '666666' }
+    { italic: true, color: '666666', size: FONT_SIZE_SMALL }
   ));
   children.push(new Paragraph({ text: '' }));
   
   // Tip box
-  children.push(createParagraph(
-    '💡 Tip: To enable collapsible sections, go to File → Page setup → Pageless. Then hover over any heading to reveal the collapse/expand triangle.',
-    { italic: true, color: '1a73e8' }
-  ));
+  children.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: '💡 Tip: ',
+        font: FONT,
+        italics: true,
+        size: FONT_SIZE_SMALL,
+        color: '1a73e8',
+      }),
+      new TextRun({
+        text: 'To enable collapsible sections, go to File → Page setup → Pageless. Then hover over any heading to reveal the collapse/expand triangle.',
+        font: FONT,
+        italics: true,
+        size: FONT_SIZE_SMALL,
+        color: '5f6368',
+      }),
+    ],
+  }));
   children.push(new Paragraph({ text: '' }));
   
-  // Flowchart Diagram Section
+  // ============================================
+  // FLOWCHART DIAGRAM SECTION (Brief)
+  // ============================================
   children.push(new Paragraph({
-    text: 'Flowchart Diagram',
-    heading: HeadingLevel.HEADING_1,
+    children: [
+      new TextRun({
+        text: 'Flowchart Diagram',
+        font: FONT,
+        bold: true,
+        size: 32, // 16pt
+        color: '1a73e8',
+      }),
+    ],
+    spacing: { before: 300, after: 100 },
   }));
   
-  children.push(createParagraph('Copy this Mermaid code to mermaid.live to view/edit the diagram:'));
+  children.push(createParagraph('Copy this Mermaid code to mermaid.live to view/edit the diagram:', { size: FONT_SIZE_SMALL }));
   children.push(new Paragraph({ text: '' }));
   
-  // Mermaid code as monospace
-  for (const line of mermaidCode.split('\n')) {
+  // Mermaid code as monospace (condensed)
+  const mermaidLines = mermaidCode.split('\n').slice(0, 30); // Limit to first 30 lines
+  for (const line of mermaidLines) {
     children.push(new Paragraph({
       children: [
         new TextRun({
           text: line,
-          font: 'Courier New',
-          size: 20, // 10pt
+          font: 'Consolas',
+          size: 16, // 8pt
+          color: '333333',
         }),
       ],
     }));
   }
+  if (mermaidCode.split('\n').length > 30) {
+    children.push(createParagraph('... (diagram continues)', { italic: true, size: 16, color: '666666' }));
+  }
   children.push(new Paragraph({ text: '' }));
   
-  // Decision Points Section
+  // ============================================
+  // PART 1: DIAGNOSTIC DECISION TREE
+  // ============================================
   children.push(new Paragraph({
-    text: 'Decision Points',
-    heading: HeadingLevel.HEADING_1,
+    children: [
+      new TextRun({
+        text: 'Part 1: Diagnostic Decision Tree (Start Here)',
+        font: FONT,
+        bold: true,
+        size: 44, // 22pt
+        color: '202124',
+      }),
+    ],
+    spacing: { before: 400, after: 200 },
   }));
   
-  const questionNodes = flowchart.nodes.filter(n => n.type === 'question');
-  for (const node of questionNodes) {
+  children.push(createParagraph(
+    'Follow the questions below to identify the correct path, then click the link to jump to the specific resolution runbook in Part 2.',
+    { size: FONT_SIZE_BODY }
+  ));
+  children.push(new Paragraph({ text: '' }));
+  
+  // Generate decision tree sections
+  let questionNumber = 1;
+  
+  for (const branch of orderedQuestions) {
+    // Question heading
+    const questionLabel = branch.node.question || branch.node.label;
     children.push(new Paragraph({
-      text: node.label,
-      heading: HeadingLevel.HEADING_2,
+      children: [
+        new TextRun({
+          text: `${questionNumber}. ${questionLabel}`,
+          font: FONT,
+          bold: true,
+          size: 28, // 14pt
+        }),
+      ],
+      spacing: { before: 200, after: 100 },
     }));
-    children.push(createParagraph(node.description || node.question || ''));
-    if (node.sourceRef) {
-      children.push(createParagraph(
-        `"${node.sourceRef.quote.substring(0, 200)}${node.sourceRef.quote.length > 200 ? '...' : ''}"`,
-        { italic: true, color: '666666' }
-      ));
+    
+    // Add description if available
+    if (branch.node.description && branch.node.description !== branch.node.question) {
+      children.push(createParagraph(branch.node.description, { color: '5f6368', size: FONT_SIZE_SMALL }));
     }
+    
+    // Add answer options as bullet points
+    for (const child of branch.children) {
+      if (!child.answer) continue;
+      
+      if (child.runbookInfo) {
+        // This answer leads to a runbook - create a linked bullet
+        children.push(createBulletWithLink(
+          `${child.answer}: `,
+          `Go to Runbook ${child.runbookInfo.letter}: ${child.runbookInfo.title}`,
+          child.runbookInfo.bookmarkId,
+          '.'
+        ));
+      } else if (child.targetNode) {
+        // This answer leads to another question or node
+        const targetDescription = child.targetNode.type === 'question' 
+          ? `Go to Question ${orderedQuestions.findIndex(q => q.node.id === child.targetNode?.id) + 1}`
+          : child.targetNode.type === 'end'
+          ? `${child.targetNode.endStateType === 'resolved' ? '✅ Resolved' : child.targetNode.endStateType === 'escalate' ? '🔺 Escalate' : '📌 ' + child.targetNode.label}`
+          : child.targetNode.label;
+        
+        children.push(createBullet(`${child.answer}: ${targetDescription}`));
+      } else {
+        children.push(createBullet(child.answer));
+      }
+    }
+    
     children.push(new Paragraph({ text: '' }));
+    questionNumber++;
   }
   
-  // Runbooks Section
+  // ============================================
+  // PART 2: RESOLUTION RUNBOOKS
+  // ============================================
   children.push(new Paragraph({
-    text: 'Runbooks',
-    heading: HeadingLevel.HEADING_1,
+    children: [
+      new TextRun({
+        text: 'Part 2: Resolution Runbooks',
+        font: FONT,
+        bold: true,
+        size: 44, // 22pt
+        color: '202124',
+      }),
+    ],
+    spacing: { before: 400, after: 200 },
   }));
   
-  for (const runbook of flowchart.runbooks) {
+  // Generate runbooks with letter names and bookmarks
+  for (let i = 0; i < flowchart.runbooks.length; i++) {
+    const runbook = flowchart.runbooks[i];
+    const runbookInfo = runbookMap.get(runbook.id)!;
+    
+    // Runbook heading with bookmark
     children.push(new Paragraph({
-      text: `📋 ${runbook.title}`,
-      heading: HeadingLevel.HEADING_2,
+      children: [
+        new Bookmark({
+          id: runbookInfo.bookmarkId,
+          children: [
+            new TextRun({
+              text: `Runbook ${runbookInfo.letter}: ${runbook.title}`,
+              font: FONT,
+              bold: true,
+              size: 32, // 16pt
+              color: '1a73e8',
+            }),
+          ],
+        }),
+      ],
+      spacing: { before: 300, after: 100 },
     }));
+    
+    // Description
     children.push(createParagraph(runbook.description));
     children.push(new Paragraph({ text: '' }));
     
     // Prerequisites
     if (runbook.prerequisites && runbook.prerequisites.length > 0) {
       children.push(new Paragraph({
-        text: 'Prerequisites',
-        heading: HeadingLevel.HEADING_3,
+        children: [
+          new TextRun({
+            text: 'Prerequisites',
+            font: FONT,
+            bold: true,
+            size: 26, // 13pt
+          }),
+        ],
       }));
       for (const prereq of runbook.prerequisites) {
-        children.push(new Paragraph({
-          children: [new TextRun({ text: `• ${prereq}` })],
-        }));
+        children.push(createBullet(prereq));
       }
       children.push(new Paragraph({ text: '' }));
     }
     
     // Steps
     children.push(new Paragraph({
-      text: 'Steps',
-      heading: HeadingLevel.HEADING_3,
+      children: [
+        new TextRun({
+          text: 'Steps',
+          font: FONT,
+          bold: true,
+          size: 26, // 13pt
+        }),
+      ],
     }));
     
     for (const step of runbook.steps) {
+      // Step instruction (bold numbered)
       children.push(new Paragraph({
         children: [
-          new TextRun({ text: `${step.order}. `, bold: true }),
-          new TextRun({ text: step.instruction, bold: true }),
+          new TextRun({ 
+            text: `${step.order}. ${step.instruction}`, 
+            font: FONT, 
+            bold: true,
+            size: FONT_SIZE_BODY,
+          }),
         ],
+        spacing: { before: 100 },
       }));
       
+      // Step details
       if (step.details) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: `    ${step.details}`, color: '666666' })],
+          children: [
+            new TextRun({ 
+              text: step.details, 
+              font: FONT, 
+              size: FONT_SIZE_BODY,
+              color: '5f6368',
+            }),
+          ],
+          indent: { left: convertInchesToTwip(0.25) },
         }));
       }
       
+      // Warning
       if (step.warning) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: `    ⚠️ Warning: ${step.warning}`, color: 'd93025' })],
+          children: [
+            new TextRun({ 
+              text: `⚠️ Warning: ${step.warning}`, 
+              font: FONT, 
+              size: FONT_SIZE_BODY,
+              color: 'd93025',
+            }),
+          ],
+          indent: { left: convertInchesToTwip(0.25) },
         }));
       }
       
+      // Tools
       if (step.toolsRequired && step.toolsRequired.length > 0) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: `    Tools: ${step.toolsRequired.join(', ')}`, italics: true, color: '1a73e8' })],
+          children: [
+            new TextRun({ 
+              text: `Tools: ${step.toolsRequired.join(', ')}`, 
+              font: FONT, 
+              italics: true,
+              size: FONT_SIZE_SMALL,
+              color: '1a73e8',
+            }),
+          ],
+          indent: { left: convertInchesToTwip(0.25) },
         }));
       }
     }
@@ -1548,22 +1924,56 @@ export async function generateGoogleDocsDocx(flowchart: FlowchartData): Promise<
     // Notes
     if (runbook.notes && runbook.notes.length > 0) {
       children.push(new Paragraph({
-        text: 'Notes',
-        heading: HeadingLevel.HEADING_3,
+        children: [
+          new TextRun({
+            text: 'Notes',
+            font: FONT,
+            bold: true,
+            size: 26, // 13pt
+          }),
+        ],
       }));
       for (const note of runbook.notes) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: `📝 ${note}`, color: '137333' })],
+          children: [
+            new TextRun({ 
+              text: `📝 ${note}`, 
+              font: FONT, 
+              size: FONT_SIZE_BODY,
+              color: '137333',
+            }),
+          ],
+          indent: { left: convertInchesToTwip(0.25) },
         }));
       }
       children.push(new Paragraph({ text: '' }));
     }
+    
+    // Separator between runbooks
+    if (i < flowchart.runbooks.length - 1) {
+      children.push(new Paragraph({
+        children: [
+          new TextRun({ text: '─'.repeat(60), color: 'CCCCCC' }),
+        ],
+      }));
+      children.push(new Paragraph({ text: '' }));
+    }
   }
   
-  // End States Section
+  // ============================================
+  // END STATES SECTION
+  // ============================================
   children.push(new Paragraph({
-    text: 'End States',
-    heading: HeadingLevel.HEADING_1,
+    children: [
+      new TextRun({
+        text: 'End States Reference',
+        font: FONT,
+        bold: true,
+        size: 32, // 16pt
+        color: '202124',
+      }),
+    ],
+    spacing: { before: 400, after: 200 },
   }));
   
   const endNodes = flowchart.nodes.filter(n => n.type === 'end');
@@ -1573,16 +1983,22 @@ export async function generateGoogleDocsDocx(flowchart: FlowchartData): Promise<
     new TableRow({
       children: [
         new TableCell({
-          children: [createParagraph('State', { bold: true })],
-          width: { size: 40, type: WidthType.PERCENTAGE },
+          children: [new Paragraph({
+            children: [new TextRun({ text: 'State', font: FONT, bold: true, size: FONT_SIZE_BODY })],
+          })],
+          width: { size: 35, type: WidthType.PERCENTAGE },
         }),
         new TableCell({
-          children: [createParagraph('Type', { bold: true })],
+          children: [new Paragraph({
+            children: [new TextRun({ text: 'Type', font: FONT, bold: true, size: FONT_SIZE_BODY })],
+          })],
           width: { size: 20, type: WidthType.PERCENTAGE },
         }),
         new TableCell({
-          children: [createParagraph('Description', { bold: true })],
-          width: { size: 40, type: WidthType.PERCENTAGE },
+          children: [new Paragraph({
+            children: [new TextRun({ text: 'Description', font: FONT, bold: true, size: FONT_SIZE_BODY })],
+          })],
+          width: { size: 45, type: WidthType.PERCENTAGE },
         }),
       ],
     }),
@@ -1595,25 +2011,43 @@ export async function generateGoogleDocsDocx(flowchart: FlowchartData): Promise<
     tableRows.push(new TableRow({
       children: [
         new TableCell({
-          children: [createParagraph(`${stateEmoji} ${node.label}`)],
+          children: [new Paragraph({
+            children: [new TextRun({ text: `${stateEmoji} ${node.label}`, font: FONT, size: FONT_SIZE_BODY })],
+          })],
         }),
         new TableCell({
-          children: [createParagraph(node.endStateType || 'resolved')],
+          children: [new Paragraph({
+            children: [new TextRun({ text: node.endStateType || 'resolved', font: FONT, size: FONT_SIZE_BODY })],
+          })],
         }),
         new TableCell({
-          children: [createParagraph(node.description || '')],
+          children: [new Paragraph({
+            children: [new TextRun({ text: node.description || '', font: FONT, size: FONT_SIZE_BODY })],
+          })],
         }),
       ],
     }));
   }
   
-  children.push(new Table({
-    rows: tableRows,
-    width: { size: 100, type: WidthType.PERCENTAGE },
-  }));
+  if (tableRows.length > 1) {
+    children.push(new Table({
+      rows: tableRows,
+      width: { size: 100, type: WidthType.PERCENTAGE },
+    }));
+  }
   
-  // Create the document
+  // Create the document with proper font defaults
   const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: FONT,
+            size: FONT_SIZE_BODY,
+          },
+        },
+      },
+    },
     sections: [{
       properties: {},
       children,
