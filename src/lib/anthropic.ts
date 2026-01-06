@@ -16,47 +16,91 @@ const getClient = () => {
   return new Anthropic({ apiKey });
 };
 
-const ANALYSIS_SYSTEM_PROMPT = `You are an expert at analyzing complex technical runbooks and documentation. Your task is to:
+const ANALYSIS_SYSTEM_PROMPT = `You are an expert at analyzing complex technical runbooks and creating HIERARCHICAL decision trees. Your goal is to create a well-structured flowchart where questions BUILD ON EACH OTHER and branch logically.
 
-1. ANALYZE the markdown runbook to identify:
-   - Decision points (questions that determine which path to take)
-   - Individual tasks/procedures that can be isolated into simple runbooks
-   - Overlapping concepts that appear in multiple places
-   - The logical flow between decisions and tasks
+## CRITICAL: HIERARCHICAL STRUCTURE
 
-2. DECOMPOSE the runbook into:
-   - A flowchart of scoping questions (yes/no or multiple choice decisions)
-   - Individual simplified runbooks (each is a simple "execute this task" procedure)
+The flowchart MUST follow a strict hierarchical pattern:
+
+1. **START with CATEGORICAL questions** - Ask the MOST FUNDAMENTAL question first that splits the problem into distinct categories. For example:
+   - "What TYPE of user is this?" (Provider vs Patient)
+   - "What CATEGORY of issue?" (Access, Data, Billing, etc.)
+   - "Which SYSTEM is affected?" (Auth, API, Database, etc.)
+
+2. **QUESTIONS MUST COMPOUND** - Each child question should ONLY make sense in the context of its parent's answer. Ask yourself: "Would this question make sense without knowing the parent answer?" If yes, it should be higher in the tree.
+
+3. **NO REDUNDANCY** - NEVER ask the same conceptual question in multiple branches. If you find yourself writing similar questions in different places:
+   - Move that question HIGHER in the tree (before the branch point)
+   - Or consolidate the branches that share the question
    
-3. The FLOWCHART should:
-   - Start with an entry point
-   - Ask scoping questions to narrow down the situation
-   - Each question leads to either another question or a specific runbook
-   - Minimize conditional logic within individual runbooks
-   - Handle edge cases through the flowchart, not within runbooks
+4. **DEPTH OVER BREADTH** - Prefer deeper, narrower trees over wide, shallow ones. A question with 8 children is usually wrong - break it into 2-3 children, each with their own sub-questions.
 
-4. Each SIMPLIFIED RUNBOOK should:
-   - Be focused on ONE specific task
-   - Have clear, numbered steps
-   - Contain NO conditional branching or debugging
-   - Be executable by following steps in order
-   - Reference other runbooks if needed (not inline the content)
+## TREE DESIGN PRINCIPLES
 
-5. SOURCE REFERENCES (CRITICAL):
-   - For EVERY question node, include a sourceRef with:
-     - quote: The EXACT text from the original markdown that prompted this question
-     - section: The heading/section it came from
-     - reasoning: Why this text led to this specific question
-   - This helps users understand WHY each question exists
+**GOOD TREE STRUCTURE:**
+\`\`\`
+Start → "User Type?" 
+         ├─ Provider → "Issue Category?"
+         │             ├─ Login → "MFA or Password?"
+         │             │           ├─ MFA → [specific MFA questions]
+         │             │           └─ Password → [specific password questions]
+         │             └─ Data → [data-specific questions]
+         └─ Patient → "Issue Category?"
+                      ├─ Login → [patient login questions]
+                      └─ Account → [account questions]
+\`\`\`
 
-6. END STATES:
-   - Use endStateType to categorize endings:
-     - "resolved": Issue is fixed, user is unblocked
-     - "escalate": Needs engineering/higher tier support
-     - "manual": Requires manual intervention or external action
-     - "blocked": Cannot proceed, waiting on something external
+**BAD TREE STRUCTURE (what to AVOID):**
+\`\`\`
+Start → "Issue Type?"
+         ├─ MFA Issue → "User Type?" → ...
+         ├─ Password Issue → "User Type?" → ...    ← REDUNDANT! "User Type" repeated
+         ├─ Login Issue → "User Type?" → ...       ← REDUNDANT! "User Type" repeated
+         └─ Account Issue → "User Type?" → ...     ← REDUNDANT! "User Type" repeated
+\`\`\`
 
-CRITICAL: The goal is to move ALL reasoning and decision-making into the flowchart, leaving runbooks as pure execution checklists.`;
+## ANALYSIS APPROACH
+
+1. **First, identify all the DIMENSIONS of variability:**
+   - User types (admin, provider, patient, etc.)
+   - Issue categories (access, data, billing, etc.)
+   - Subsystem types (auth, MFA, SSO, etc.)
+   
+2. **Order dimensions by FUNDAMENTALNESS:**
+   - Which dimension affects the MOST other decisions?
+   - Which dimension is needed EARLIEST to route correctly?
+   - Put the most fundamental dimension at the TOP
+   
+3. **Build the tree TOP-DOWN:**
+   - Start with the most fundamental split
+   - Each branch gets progressively more specific
+   - Leaf nodes should be SPECIFIC runbooks or end states
+
+## RUNBOOK DESIGN
+
+Each SIMPLIFIED RUNBOOK should:
+- Be focused on ONE specific scenario
+- Have clear, numbered steps  
+- Contain NO conditional branching (all decisions should be in the flowchart)
+- Be executable by following steps in order
+- Only be reachable through a SPECIFIC path in the flowchart
+
+## SOURCE REFERENCES
+
+For EVERY question node, include a sourceRef with:
+- quote: The EXACT text from the original markdown that prompted this question
+- section: The heading/section it came from  
+- reasoning: Why this text led to this specific question
+
+## END STATES
+
+Use endStateType to categorize endings:
+- "resolved": Issue is fixed, user is unblocked
+- "escalate": Needs engineering/higher tier support
+- "manual": Requires manual intervention or external action
+- "blocked": Cannot proceed, waiting on something external
+
+REMEMBER: The test of a good flowchart is that each question's answer MEANINGFULLY CHANGES what questions come next. If two different answers lead to asking the same follow-up questions, you've structured it wrong.`;
 
 const OUTPUT_FORMAT = `Return your response as a JSON object with this exact structure:
 
@@ -160,7 +204,7 @@ IMPORTANT:
 - Use appropriate endStateType for all end nodes`;
 
 export async function analyzeRunbook(markdown: string): Promise<AnalysisResult> {
-  console.log('[Anthropic] Starting runbook analysis...');
+  console.log('[Anthropic] Starting runbook analysis with extended thinking...');
   console.log(`[Anthropic] Input length: ${markdown.length} characters`);
   
   try {
@@ -169,13 +213,32 @@ export async function analyzeRunbook(markdown: string): Promise<AnalysisResult> 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 16000,
-      system: ANALYSIS_SYSTEM_PROMPT,
+      thinking: {
+        type: 'enabled',
+        budget_tokens: 10000, // Allow substantial thinking for complex tree planning
+      },
       messages: [
         {
           role: 'user',
-          content: `Analyze this runbook and create a decision flowchart with simplified runbooks:
+          content: `${ANALYSIS_SYSTEM_PROMPT}
+
+---
+
+## RUNBOOK TO ANALYZE:
 
 ${markdown}
+
+---
+
+## YOUR TASK:
+
+Before generating the flowchart:
+1. List all the DIMENSIONS of variability in this runbook (user types, issue categories, etc.)
+2. Determine which dimension is MOST FUNDAMENTAL (affects the most downstream decisions)
+3. Plan a hierarchical tree where questions BUILD ON previous answers
+4. Verify NO question appears in multiple branches
+
+Then generate the flowchart.
 
 ${OUTPUT_FORMAT}`
         }
@@ -187,16 +250,23 @@ ${OUTPUT_FORMAT}`
     console.log(`[Anthropic] Input tokens: ${message.usage.input_tokens}`);
     console.log(`[Anthropic] Output tokens: ${message.usage.output_tokens}`);
     
-    const content = message.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
+    // Find the text content block (skip thinking blocks)
+    const textContent = message.content.find(block => block.type === 'text');
+    if (!textContent || textContent.type !== 'text') {
+      throw new Error('No text response from Claude');
+    }
+    
+    // Log if thinking was used
+    const thinkingBlock = message.content.find(block => block.type === 'thinking');
+    if (thinkingBlock) {
+      console.log('[Anthropic] Extended thinking was used for planning');
     }
     
     // Parse the JSON response
-    const jsonMatch = content.text.match(/```json\n?([\s\S]*?)\n?```/);
+    const jsonMatch = textContent.text.match(/```json\n?([\s\S]*?)\n?```/);
     if (!jsonMatch) {
       console.error('[Anthropic] Could not find JSON in response');
-      console.log('[Anthropic] Response:', content.text.substring(0, 1000));
+      console.log('[Anthropic] Response:', textContent.text.substring(0, 1000));
       throw new Error('Could not parse JSON from Claude response');
     }
     
@@ -266,13 +336,32 @@ export async function* analyzeRunbookStream(markdown: string): AsyncGenerator<An
     const stream = await client.messages.stream({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 16000,
-      system: ANALYSIS_SYSTEM_PROMPT,
+      thinking: {
+        type: 'enabled',
+        budget_tokens: 10000, // Allow substantial thinking for complex tree planning
+      },
       messages: [
         {
           role: 'user',
-          content: `Analyze this runbook and create a decision flowchart with simplified runbooks:
+          content: `${ANALYSIS_SYSTEM_PROMPT}
+
+---
+
+## RUNBOOK TO ANALYZE:
 
 ${markdown}
+
+---
+
+## YOUR TASK:
+
+Before generating the flowchart:
+1. List all the DIMENSIONS of variability in this runbook (user types, issue categories, etc.)
+2. Determine which dimension is MOST FUNDAMENTAL (affects the most downstream decisions)
+3. Plan a hierarchical tree where questions BUILD ON previous answers
+4. Verify NO question appears in multiple branches
+
+Then generate the flowchart.
 
 ${OUTPUT_FORMAT}`
         }
@@ -281,20 +370,46 @@ ${OUTPUT_FORMAT}`
     
     let fullText = '';
     let lastPercent = 15;
+    let isThinking = false;
+    let thinkingStarted = false;
     
     yield {
       type: 'progress',
       stage: 'structuring',
-      message: 'Building flowchart structure...',
-      percent: 25,
+      message: 'Planning hierarchical tree structure...',
+      percent: 20,
     };
     
     for await (const event of stream) {
+      // Handle thinking blocks (extended thinking)
+      if (event.type === 'content_block_start') {
+        if ('content_block' in event && event.content_block?.type === 'thinking') {
+          isThinking = true;
+          if (!thinkingStarted) {
+            thinkingStarted = true;
+            yield {
+              type: 'progress',
+              stage: 'structuring',
+              message: 'Analyzing dimensions and planning tree structure...',
+              percent: 25,
+            };
+          }
+        } else if ('content_block' in event && event.content_block?.type === 'text') {
+          isThinking = false;
+          yield {
+            type: 'progress',
+            stage: 'generating',
+            message: 'Generating flowchart...',
+            percent: 50,
+          };
+        }
+      }
+      
       if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
         fullText += event.delta.text;
         
         // Update progress based on content length (rough estimate)
-        const estimatedProgress = Math.min(25 + (fullText.length / 200), 85);
+        const estimatedProgress = Math.min(50 + (fullText.length / 300), 90);
         if (estimatedProgress > lastPercent + 5) {
           lastPercent = estimatedProgress;
           
@@ -302,11 +417,11 @@ ${OUTPUT_FORMAT}`
           const nodesMatch = fullText.match(/"nodes"\s*:\s*\[/);
           const runbooksMatch = fullText.match(/"runbooks"\s*:\s*\[/);
           
-          let detail = 'Processing...';
+          let detail = 'Building flowchart...';
           if (runbooksMatch) {
-            detail = 'Generating runbooks...';
+            detail = 'Generating simplified runbooks...';
           } else if (nodesMatch) {
-            detail = 'Creating flowchart nodes...';
+            detail = 'Creating hierarchical decision nodes...';
           }
           
           yield {
