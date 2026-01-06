@@ -10,7 +10,6 @@
 
 <p align="center">
   <a href="#features">Features</a> •
-  <a href="#demo">Demo</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#how-it-works">How It Works</a> •
   <a href="#search">Search</a> •
@@ -25,6 +24,20 @@
   <img src="https://img.shields.io/badge/Claude-AI-orange?style=flat-square" alt="Claude AI" />
   <img src="https://img.shields.io/badge/Gemini-AI-blue?style=flat-square" alt="Gemini AI" />
   <img src="https://img.shields.io/badge/React_Flow-11-purple?style=flat-square" alt="React Flow" />
+</p>
+
+---
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://gist.githubusercontent.com/user-attachments/assets/flowbook-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://gist.githubusercontent.com/user-attachments/assets/flowbook-light.svg">
+    <img alt="Flowbook Demo" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjUwIiBoZWlnaHQ9IjQ4MCIgdmlld0JveD0iMCAwIDY1MCA0ODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwZDExMTc7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6IzE2MWIyMjtzdG9wLW9wYWNpdHk6MSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InB1cnBsZUdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojODk1N2U1O3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNhMzcxZjc7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJncmVlbkdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMjM4NjM2O3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMyZWEwNDM7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJibHVlR3JhZCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMxZjZmZWI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6IzM4OGJmZDtzdG9wLW9wYWNpdHk6MSIgLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InJlZEdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZjg1MTQ5O3N0b3Atb3BhY2l0eToxIiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmZjdiNzI7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGZpbHRlciBpZD0iZ2xvdyI+CiAgICAgIDxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjIiIHJlc3VsdD0iY29sb3JlZEJsdXIiLz4KICAgICAgPGZlTWVyZ2U+CiAgICAgICAgPGZlTWVyZ2VOb2RlIGluPSJjb2xvcmVkQmx1ciIvPgogICAgICAgIDxmZU1lcmdlTm9kZSBpbj0iU291cmNlR3JhcGhpYyIvPgogICAgICA8L2ZlTWVyZ2U+CiAgICA8L2ZpbHRlcj4KICA8L2RlZnM+CiAgCiAgPCEtLSBCYWNrZ3JvdW5kIC0tPgogIDxyZWN0IHdpZHRoPSI2NTAiIGhlaWdodD0iNDgwIiBmaWxsPSJ1cmwoI2JnR3JhZCkiIHJ4PSIxMiIvPgogIAogIDwhLS0gRG90IHBhdHRlcm4gLS0+CiAgPHBhdHRlcm4gaWQ9ImRvdHMiIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICA8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0iIzIxMjYyZCIgb3BhY2l0eT0iMC41Ii8+CiAgPC9wYXR0ZXJuPgogIDxyZWN0IHdpZHRoPSI2NTAiIGhlaWdodD0iNDgwIiBmaWxsPSJ1cmwoI2RvdHMpIi8+CiAgCiAgPCEtLSBTdGFydCBOb2RlIC0tPgogIDxyZWN0IHg9IjI3NSIgeT0iMjAiIHdpZHRoPSIxMDAiIGhlaWdodD0iNDAiIHJ4PSIyMCIgZmlsbD0idXJsKCNwdXJwbGVHcmFkKSIgZmlsdGVyPSJ1cmwoI2dsb3cpIi8+CiAgPHRleHQgeD0iMzI1IiB5PSI0NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7ilrYgU3RhcnQ8L3RleHQ+CiAgCiAgPCEtLSBBcnJvdyAxIC0tPgogIDxwYXRoIGQ9Ik0zMjUgNjAgTDMyNSA4NSIgc3Ryb2tlPSIjNTg1ODU4IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkKSIvPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyb3doZWFkIiBtYXJrZXJXaWR0aD0iMTAiIG1hcmtlckhlaWdodD0iNyIgcmVmWD0iOSIgcmVmWT0iMy41IiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAgMCwgMTAgMy41LCAwIDciIGZpbGw9IiM1ODU4NTgiIC8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CiAgCiAgPCEtLSBRdWVzdGlvbiBOb2RlIDEgLS0+CiAgPHJlY3QgeD0iMjAwIiB5PSI5MCIgd2lkdGg9IjI1MCIgaGVpZ2h0PSI1MCIgcng9IjgiIGZpbGw9InVybCgjZ3JlZW5HcmFkKSIgZmlsdGVyPSJ1cmwoI2dsb3cpIi8+CiAgPHRleHQgeD0iMzI1IiB5PSIxMjAiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWksIC1hcHBsZS1zeXN0ZW0sIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+4p2TIElzIHRoaXMgYW4gQWRtaW4gb3IgVXNlcj88L3RleHQ+CiAgCiAgPCEtLSBBcnJvd3MgZnJvbSBRMSAtLT4KICA8cGF0aCBkPSJNMjUwIDE0MCBMMTgwIDE3MCIgc3Ryb2tlPSIjNTg1ODU4IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkKSIvPgogIDxwYXRoIGQ9Ik00MDAgMTQwIEw0NzAgMTcwIiBzdHJva2U9IiM1ODU4NTgiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQpIi8+CiAgCiAgPCEtLSBBbnN3ZXIgTm9kZTogVXNlciAtLT4KICA8cmVjdCB4PSIxMTAiIHk9IjE3NSIgd2lkdGg9IjgwIiBoZWlnaHQ9IjMwIiByeD0iNiIgZmlsbD0iIzQ3NTU2OSIvPgogIDx0ZXh0IHg9IjE1MCIgeT0iMTk1IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VXNlcjwvdGV4dD4KICAKICA8IS0tIEFuc3dlciBOb2RlOiBBZG1pbiAtLT4KICA8cmVjdCB4PSI0NjAiIHk9IjE3NSIgd2lkdGg9IjgwIiBoZWlnaHQ9IjMwIiByeD0iNiIgZmlsbD0iIzQ3NTU2OSIvPgogIDx0ZXh0IHg9IjUwMCIgeT0iMTk1IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QWRtaW48L3RleHQ+CiAgCiAgPCEtLSBBcnJvdyBmcm9tIFVzZXIgLS0+CiAgPHBhdGggZD0iTTE1MCAyMDUgTDE1MCAyMzUiIHN0cm9rZT0iIzU4NTg1OCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KICAKICA8IS0tIEFycm93IGZyb20gQWRtaW4gLS0+CiAgPHBhdGggZD0iTTUwMCAyMDUgTDUwMCAyMzUiIHN0cm9rZT0iIzU4NTg1OCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KICAKICA8IS0tIFF1ZXN0aW9uIE5vZGUgMiAtLT4KICA8cmVjdCB4PSI0MCIgeT0iMjQwIiB3aWR0aD0iMjIwIiBoZWlnaHQ9IjUwIiByeD0iOCIgZmlsbD0idXJsKCNncmVlbkdyYWQpIiBmaWx0ZXI9InVybCgjZ2xvdykiLz4KICA8dGV4dCB4PSIxNTAiIHk9IjI3MCIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7inZMgQ2FuIGFjY2VzcyBzZXR0aW5ncz88L3RleHQ+CiAgCiAgPCEtLSBSdW5ib29rIE5vZGU6IEFkbWluIFZlcmlmaWNhdGlvbiAtLT4KICA8cmVjdCB4PSIzOTAiIHk9IjI0MCIgd2lkdGg9IjIyMCIgaGVpZ2h0PSI2MCIgcng9IjgiIGZpbGw9InVybCgjYmx1ZUdyYWQpIiBmaWx0ZXI9InVybCgjZ2xvdykiLz4KICA8dGV4dCB4PSI1MDAiIHk9IjI2NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5OLIEFkbWluIFZlcmlmaWNhdGlvbjwvdGV4dD4KICA8dGV4dCB4PSI1MDAiIHk9IjI4NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2IzZDRmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Q2xpY2sgdG8gdmlldyBzdGVwczwvdGV4dD4KICAKICA8IS0tIEFycm93cyBmcm9tIFEyIC0tPgogIDxwYXRoIGQ9Ik05MCAyOTAgTDkwIDMyMCIgc3Ryb2tlPSIjNTg1ODU4IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkKSIvPgogIDxwYXRoIGQ9Ik0yMTAgMjkwIEwyMTAgMzIwIiBzdHJva2U9IiM1ODU4NTgiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQpIi8+CiAgCiAgPCEtLSBBcnJvdyBmcm9tIEFkbWluIFZlcmlmaWNhdGlvbiAtLT4KICA8cGF0aCBkPSJNNTAwIDMwMCBMNTAwIDM4MCIgc3Ryb2tlPSIjNTg1ODU4IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkKSIvPgogIAogIDwhLS0gQW5zd2VyIE5vZGU6IFllcyAtLT4KICA8cmVjdCB4PSI1NSIgeT0iMzI1IiB3aWR0aD0iNzAiIGhlaWdodD0iMzAiIHJ4PSI2IiBmaWxsPSIjNDc1NTY5Ii8+CiAgPHRleHQgeD0iOTAiIHk9IjM0NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlllczwvdGV4dD4KICAKICA8IS0tIEFuc3dlciBOb2RlOiBObyAtLT4KICA8cmVjdCB4PSIxNzUiIHk9IjMyNSIgd2lkdGg9IjcwIiBoZWlnaHQ9IjMwIiByeD0iNiIgZmlsbD0iIzQ3NTU2OSIvPgogIDx0ZXh0IHg9IjIxMCIgeT0iMzQ1IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm88L3RleHQ+CiAgCiAgPCEtLSBBcnJvdyBmcm9tIFllcyAtLT4KICA8cGF0aCBkPSJNOTAgMzU1IEw5MCAzODAiIHN0cm9rZT0iIzU4NTg1OCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KICAKICA8IS0tIEFycm93IGZyb20gTm8gLS0+CiAgPHBhdGggZD0iTTIxMCAzNTUgTDIxMCAzODAiIHN0cm9rZT0iIzU4NTg1OCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZCkiLz4KICAKICA8IS0tIFJ1bmJvb2sgTm9kZTogU2VsZi1SZXNldCAtLT4KICA8cmVjdCB4PSIyNSIgeT0iMzg1IiB3aWR0aD0iMTMwIiBoZWlnaHQ9IjUwIiByeD0iOCIgZmlsbD0idXJsKCNibHVlR3JhZCkiIGZpbHRlcj0idXJsKCNnbG93KSIvPgogIDx0ZXh0IHg9IjkwIiB5PSI0MTUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWksIC1hcHBsZS1zeXN0ZW0sIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+TiyBTZWxmLVJlc2V0PC90ZXh0PgogIAogIDwhLS0gRW5kIE5vZGU6IEVzY2FsYXRlIC0tPgogIDxyZWN0IHg9IjE1NSIgeT0iMzg1IiB3aWR0aD0iMTEwIiBoZWlnaHQ9IjUwIiByeD0iOCIgZmlsbD0idXJsKCNyZWRHcmFkKSIgZmlsdGVyPSJ1cmwoI2dsb3cpIi8+CiAgPHRleHQgeD0iMjEwIiB5PSI0MTUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWksIC1hcHBsZS1zeXN0ZW0sIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+UtCBFc2NhbGF0ZTwvdGV4dD4KICAKICA8IS0tIEVuZCBOb2RlOiBSZXNvbHZlZCAtLT4KICA8cmVjdCB4PSI0MzAiIHk9IjM4NSIgd2lkdGg9IjE0MCIgaGVpZ2h0PSI1MCIgcng9IjgiIGZpbGw9IiMyMmM1NWUiIGZpbHRlcj0idXJsKCNnbG93KSIvPgogIDx0ZXh0IHg9IjUwMCIgeT0iNDE1IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKchSBSZXNvbHZlZDwvdGV4dD4KICAKICA8IS0tIFdhdGVybWFyayAtLT4KICA8dGV4dCB4PSIzMjUiIHk9IjQ2NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgLWFwcGxlLXN5c3RlbSwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzU4NTg1OCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Rmxvd2Jvb2sgfCBBSSBSdW5ib29rIERlY29tcG9zaXRpb248L3RleHQ+Cjwvc3ZnPg==" />
+  </picture>
+</p>
+
+<p align="center">
+  <em>☝️ This is just a pretty picture, not the actual app. The real thing is way cooler.</em>
 </p>
 
 ---
@@ -156,45 +169,6 @@ Press `⌘/Ctrl + Enter` to generate an AI response that:
 | `⌘/Ctrl + F` | Open search |
 | `Esc` | Close search |
 | `⌘/Ctrl + Enter` | Generate AI response |
-
----
-
-## Demo
-
-```
-┌─────────────────┐
-│   📄 Paste      │
-│   Runbook MD    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  🤖 Claude AI   │
-│   Analyzes      │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│                                         │
-│  🟣 Start                               │
-│     │                                   │
-│     ▼                                   │
-│  🟢 Is this an Admin or User? ───────┐  │
-│     │                               │  │
-│    User                          Admin│
-│     │                               │  │
-│     ▼                               ▼  │
-│  🟢 Can access        🔵 Admin         │
-│     settings? ───┐       Verification  │
-│     │           │        [Click to     │
-│    Yes          No        view steps]  │
-│     │           │                      │
-│     ▼           ▼                      │
-│  🔵 Self-    🔺 Escalate               │
-│     Reset       to Eng                 │
-│                                         │
-└─────────────────────────────────────────┘
-```
 
 ---
 
